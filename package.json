@@ -1,0 +1,16 @@
+{
+  "workspaces": [
+    "saturn-contracts",
+    "simple-app",
+    "data-fetcher",
+    "subgraph",
+    "proof-explorer/*"
+  ],
+  "packageManager": "yarn@4.0.2",
+  "devDependencies": {
+    "ethers": "6.11.0"
+  },
+  "scripts": {
+    "setup": "./scripts/setup"
+  }
+}

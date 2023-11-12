@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+  set -x
+
+  yarn
+  yarn install
+
+  pushd simple-app
+      yarn build
+  popd
+
+  set +x
+  
