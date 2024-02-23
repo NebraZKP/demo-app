@@ -70,6 +70,7 @@ export function vkFile(description?: string | undefined): Option {
 export type SimpleAppInstance = {
   /// Address of the simple-app contract
   simpleApp: string;
+  circuitId: string;
 };
 
 export function loadSimpleAppInstance(

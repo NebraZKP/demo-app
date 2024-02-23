@@ -12,7 +12,9 @@ class SaturnClient {
     async submitProof(circuitId, proof, publicInputs, options) {
         const txResponse = await (0, saturn_1.submitProof)(this.saturnInstance.proofReceiver, circuitId, proof, publicInputs, options);
         const proofId = await this.saturnInstance.proofReceiver.computeProofId(circuitId, publicInputs);
+        console.log("");
         console.log(`https://sepolia.nebrascan.io/proofId/${proofId}`);
+        console.log("");
         return new SubmissionHandle(proofId, txResponse);
     }
     async waitForProofVerified(submissionHandle, progress) {

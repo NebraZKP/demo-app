@@ -15,6 +15,16 @@ contract SimpleApp is Groth16Verifier {
     // Stores keccak of submitted solutions to prevent duplicates.
     mapping(bytes32 => bool) private solutions;
 
+    // NEBRA's Saturn contract
+    ISaturnVerifier public saturnContract;
+    // Circuit Identifier for Saturn
+    uint256 public circuitId;
+
+    constructor(ISaturnVerifier _saturnContract, uint256 _circuitId) {
+        saturnContract = _saturnContract;
+        circuitId = _circuitId;
+    }
+
     // Verifies that the given inputs correspond to a solution to the
     // SimpleApp equation (see circuit.circom). Updates the `proofsVerified`
     // count if the solution is correct (where the solution is checked via a
@@ -23,12 +33,9 @@ contract SimpleApp is Groth16Verifier {
     /// @return r bool true if the given inputs satisfy the equation (as shown
     /// by the associated proof).
     function submitSolution(
-        uint256[2] calldata a,
-        uint256[2][2] calldata b,
-        uint256[2] calldata c,
-        uint256[4] calldata solution
+        uint256[] calldata solution
     ) public returns (bool r) {
-        bool isProofCorrect = this.verifyProof(a, b, c, solution);
+        bool isProofCorrect = saturnContract.isVerified(circuitId, solution);
         require(isProofCorrect, "Proof was not correct");
 
         bytes32 solutionHash = keccak256(abi.encode(solution));
