@@ -1,0 +1,200 @@
+#!/usr/bin/env bash
+#
+# Tests demo-app in github CI including setup steps:
+# - Run setup script
+# - Deploy UPA tool and register demo-app verification key
+# - Deploy demo-app and run demo-app commands.
+#
+set -x
+set -e
+
+# Setup necessary files
+yarn
+yarn build
+yarn   # re-run to ensure demo-app command is in node_modules/.bin
+
+. scripts/shell_setup.sh
+
+if ! (which upa) ; then
+    echo "No upa command in PATH"
+    echo "PATH=${PATH}"
+    exit 1
+fi
+if ! (which demo-app) ; then
+    echo "No demo-app command in PATH"
+    echo "PATH=${PATH}"
+    exit 1
+fi
+
+if [ -e node_modules/@nebrazkp/upa ] ; then
+    UPA_CONTRACTS=`realpath node_modules/@nebrazkp/upa`
+elif [ -e ../../node_modules/@nebrazkp/upa ] ; then
+    UPA_CONTRACTS=`realpath ../../node_modules/@nebrazkp/upa`
+else
+    echo "Cannot find @nebrazkp/upa"
+    exit 1
+fi
+
+mkdir -p _test_demo_app
+pushd _test_demo_app
+
+    # Import hardhat util functions
+    . ${UPA_CONTRACTS}/scripts/utils.sh
+
+    start_hardhat_node "" "yarn hardhat node"
+    trap stop_hardhat_node EXIT
+
+    # Run this script from the `demo-app` directory.
+    KEYFILE="a.key"
+    APP_KEYFILE="demo-app.keyfile"
+    SNARKJSVKFILE="../circuits/snarkjs_verification_key.json"
+    UPAVKFILE="../circuits/upa_verification_key.json"
+    UPAINSTANCE="upa.instance"
+
+    export KEYFILE_PASSWORD=""
+
+    # Set interval mining mode
+    upa dev interval-mining 1000
+
+    # Create and fund addresses
+    if ! [ -e ${KEYFILE} ] ; then
+        upa dev ethkeygen --keyfile ${KEYFILE}
+    fi
+    addr=0x`cat ${KEYFILE} | jq -r .address`
+    upa dev fund --address ${addr}
+
+    if ! [ -e ${APP_KEYFILE} ] ; then
+        upa dev ethkeygen --keyfile ${APP_KEYFILE}
+    fi
+    addr=0x`cat ${APP_KEYFILE} | jq -r .address`
+    upa dev fund --address ${addr}
+
+    # Deploy UPA and then demo-app using KEYFILE.
+    upa deploy \
+           --keyfile ${KEYFILE} \
+           --verifier ${UPA_CONTRACTS}/test/data/test.bin \
+           --instance ${UPAINSTANCE}
+
+    # Register a vk
+    upa registervk \
+           --keyfile ${KEYFILE} \
+           --vk-file ${UPAVKFILE} \
+           --wait
+
+    demo-app deploy \
+               --keyfile ${APP_KEYFILE} \
+               --upa-instance ${UPAINSTANCE}
+
+    # Launch Dev Aggregator
+    BATCH_SIZE=6;
+    MAX_WAIT_TIME=10;
+    start_dev_aggregator $BATCH_SIZE $MAX_WAIT_TIME $KEYFILE
+
+    rm -f generated_proofs.json
+    demo-app generate-proofs -n 3
+    if ! [ -e generated_proofs.json ] ; then
+        echo "FAILURE: No file `generated_proofs.json` generated."
+        exit 1
+    fi
+
+    TEST_PROOF_OUTPUT="test_proof_output.json"
+    rm -f test_proof_output.json
+    demo-app generate-proofs -n 4 --proof-output ${TEST_PROOF_OUTPUT}
+    if ! [ -e ${TEST_PROOF_OUTPUT} ] ; then
+        echo "FAILURE: No file `${TEST_PROOF_OUTPUT}` generated."
+        exit 1
+    fi
+
+    # Check initial contract state
+    initial_state=`demo-app get-state | jq -r .proofsVerified`
+    expected_initial_state="0"
+    if ! [ "${initial_state}" == "${expected_initial_state}" ] ; then
+        echo "FAILURE: expected init state '${expected_initial_state}' but saw '${initial_state}'."
+        exit 1
+    fi
+
+    # Submit 7 solutions directly to the contract. Check that the contract
+    # state updates accordingly.
+    demo-app submit-direct --keyfile ${APP_KEYFILE} -n 7
+    state=`demo-app get-state | jq -r .proofsVerified`
+    expected_state="7"
+    if ! [ "${state}" == "${expected_state}" ] ; then
+        echo "FAILURE: state expected to equal '${expected_state}' but it was '${state}'."
+        exit 1
+    fi
+
+    # Submit 10 more proofs directly.  Again, check the state update.
+    demo-app submit-direct --keyfile ${APP_KEYFILE} -n 10
+    state=`demo-app get-state | jq -r .proofsVerified`
+    expected_state="17"
+    if ! [ "${state}" == "${expected_state}" ] ; then
+        echo "FAILURE: state expected to equal '${expected_state}' but it was '${state}'."
+        exit 1
+    fi
+
+    # Submit with default parameters. 20 proofs (single-proof submissions).
+    demo-app multi-submit --keyfile ${APP_KEYFILE} -n 20
+
+    # Check UPA contract state. 20 submissions, so `next_id` should be 21.
+    next_id=`upa stats | jq -r .nextSubmissionIdx`
+    expected_next_id="21"
+    if ! [ "${next_id}" == "${expected_next_id}" ] ; then
+        echo "FAILURE: expected next_id '${expected_next_id}' but saw '${next_id}'."
+        exit 1
+    fi
+
+    # Check the demo-app state update. Should have incremented from 17 to 37.
+    state=`demo-app get-state | jq -r .proofsVerified`
+    expected_state="37"
+    if ! [ "${state}" == "${expected_state}" ] ; then
+        echo "FAILURE: state expected to equal '${expected_state}' but it was '${state}'."
+        exit 1
+    fi
+
+    # Submit with some optional parameters. 20 proofs, submission size 5, so
+    # 4 submissions.
+    # TODO(#515): Support submitting non-multiples of submission size.
+    demo-app multi-submit \
+               --keyfile ${APP_KEYFILE} \
+               -n 20 \
+               --submit-rate 3 \
+               --max-fee-per-gas 20 \
+               --submission-size 5
+
+    # Check UPA contract state. 24 total submissions, so `next_id` should be 25.
+    next_id=`upa stats | jq -r .nextSubmissionIdx`
+    expected_next_id="25"
+    if ! [ "${next_id}" == "${expected_next_id}" ] ; then
+        echo "FAILURE: expected next_id '${expected_next_id}' but saw '${next_id}'."
+        exit 1
+    fi
+
+    # Check the demo-app state update. Should have incremented from 37 to 57.
+    state=`demo-app get-state | jq -r .proofsVerified`
+    expected_state="57"
+    if ! [ "${state}" == "${expected_state}" ] ; then
+        echo "FAILURE: state expected to equal '${expected_state}' but it was '${state}'."
+        exit 1
+    fi
+
+    # Submit a single proof, wait for it to be verified, and submit the
+    # solution to demo-app.
+    demo-app submit --keyfile ${APP_KEYFILE}
+    state=`demo-app get-state | jq -r .proofsVerified`
+    expected_state="58"
+    if ! [ "${state}" == "${expected_state}" ] ; then
+        echo "FAILURE: state expected to equal '${expected_state}' but it was '${state}'."
+        exit 1
+    fi
+
+    stop_dev_aggregator
+    stop_hardhat_node
+
+popd
+
+set +x
+set +e
+
+echo "========================================"
+echo "====             PASSED             ===="
+echo "========================================"

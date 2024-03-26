@@ -20,21 +20,24 @@ yarn install
 
 ## Submit a proof:
 ```
-git clone git@github.com:NebraZKP/simple-app-demo.git && cd simple-app-demo
+git clone git@github.com:NebraZKP/demo-app.git && cd demo-app/core
 
-# Build simple-app
-yarn setup
+# Build demo-app
+yarn
+yarn build
+# Make sure demo-app binary is in node_modules/.bin
+yarn
 
-# Set up simple-app commands in shell
+# Set up demo-app commands in shell
 source scripts/shell_setup.sh
 
-# Use saturn local to generate a key
-saturn local ethkeygen --keyfile keyfilename.key
+# Use upa local to generate a key
+upa local ethkeygen --keyfile keyfilename.key
 ```
 Use a faucet such as www.sepoliafaucet.com to fund your address with sepolia ETH.
 ```
 # Submit a solution along with a proof
-simple-app submit --keyfile keyfilename.key
+demo-app submit --keyfile keyfilename.key
 ```
 The last command will print a link to the proof's status on NEBRA's proof explorer. The proof should be either verified or pending verification.
 
@@ -42,11 +45,11 @@ The last command will print a link to the proof's status on NEBRA's proof explor
 ### Check state of the UPA contract:
 
 ```console
-$ saturn stats
+$ upa stats
 ```
 
-### Check state of the simple-app contract:
+### Check state of the demo-app contract:
 
 ```console
-$ simple-app get-state
+$ demo-app get-state
 ```

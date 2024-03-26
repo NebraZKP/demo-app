@@ -1,0 +1,19 @@
+# Node packages
+node_modules
+typechain-types
+artifacts
+cache
+dist
+
+# Yarn modern (see https://yarnpkg.com/getting-started/qa#which-files-should-be-gitignored)
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Generated circuit files
+snarkjs_verification_key.json
+*.ptau
