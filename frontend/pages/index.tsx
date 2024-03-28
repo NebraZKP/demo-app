@@ -119,11 +119,13 @@ export default function Home() {
   // Runs when current stage is `DemoAppStages.AggregatingProof`
   useEffect(() => {
     if (currStage !== DemoAppStages.AggregatingProof) return;
-    aggregateProofText.push(
-      <span key="aggregatingProof">Waiting for proof to be aggregated...</span>
-    );
+    let newAggregateProofText = [
+      <span key="aggregatingProof">Waiting for proof to be aggregated...</span>,
+    ];
+
     const nebrascanLink = `https://sepolia.nebrascan.io/proofId/${submitToUpaResult?.submissionHandle.submission.proofIds[0]}`;
-    aggregateProofText.push(
+
+    newAggregateProofText.push(
       <div key="nebrascanLink">
         <u>
           <a href={nebrascanLink} target="_blank" rel="noopener noreferrer">
@@ -132,37 +134,37 @@ export default function Home() {
         </u>
       </div>
     );
+    setAggregateProofText(newAggregateProofText);
     const aggregate = async () => {
       await aggregatingProofOnUpa(
         proofData,
         submitToUpaResult?.submissionHandle!,
         provider!
       );
-      aggregateProofText.push(
+      newAggregateProofText.push(
         <span key="proofAggregated">Proof successfully aggregated!</span>
       );
-      setAggregateProofText(aggregateProofText);
+      setAggregateProofText(newAggregateProofText);
       setCurrStage(DemoAppStages.SubmittingSolutionToDemoApp);
     };
-    setAggregateProofText(aggregateProofText);
     aggregate().catch(console.error);
-    submitDemoAppText.push(
-      <span key="submittingSolution">Submitting solution to Demo App...</span>
-    );
-    setSubmitDemoAppText(submitDemoAppText);
   }, [currStage]);
 
   // Runs when current stage is `DemoAppStages.SubmittingSolutionToDemoApp`
   useEffect(() => {
     if (currStage !== DemoAppStages.SubmittingSolutionToDemoApp) return;
+    let newSubmitDemoAppText = [
+      <span key="submittingSolution">Submitting solution to Demo App...</span>,
+    ];
+    setSubmitDemoAppText(newSubmitDemoAppText);
     const submitSolution = async () => {
       const txReceipt = await submittingToDemoApp(proofData, provider!);
       const txLink = `https://sepolia.etherscan.io/tx/${txReceipt?.hash}`;
       const gasUsed = `${txReceipt.gasUsed}`;
-      submitDemoAppText.push(
+      newSubmitDemoAppText.push(
         <div key="txLink">Demo App solution submitted! {gasUsed} gas used.</div>
       );
-      submitDemoAppText.push(
+      newSubmitDemoAppText.push(
         <u>
           <a href={txLink} target="_blank" rel="noopener noreferrer">
             View Etherscan transaction
@@ -173,15 +175,15 @@ export default function Home() {
         submitToUpaResult!.txReceipt.gasUsed + txReceipt.gasUsed;
       const finalGasTotalString = `${finalGasTotal}`;
       const estimatedGasSaved = `${BigInt(270_000) - finalGasTotal!}`;
-      submitDemoAppText.push(
+      newSubmitDemoAppText.push(
         <div key="txLink">Total: {finalGasTotalString} gas used.</div>
       );
-      submitDemoAppText.push(
+      newSubmitDemoAppText.push(
         <div key="txLink">
           Estimated gas saved using UPA: {estimatedGasSaved}
         </div>
       );
-      setSubmitDemoAppText(submitDemoAppText);
+      setSubmitDemoAppText(newSubmitDemoAppText);
       setCurrStage(DemoAppStages.DemoComplete);
     };
     submitSolution().catch(console.error);
