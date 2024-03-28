@@ -193,7 +193,7 @@ export default function Home() {
     <main
       className={`flex min-h-screen flex-col items-center justify-between p-24 ${roboto.className}`}
     >
-      <div>
+      <div className="h-screen items-center">
         <Logo width={100} height={100} />
         <h1 className="text-3xl text-center font-semibold py-4">
           DEMO APP{" "}
@@ -205,8 +205,8 @@ export default function Home() {
             )
           </span>
         </h1>
-        <div className="border-solid border-2 border-indigo-500 rounded-md py-4 my-6">
-          <p className="text-sm text-center font-semibold">
+        <div className="border-solid border-2 border-indigo-500 rounded-md py-4 inline-block my-6">
+          <p className="text-sm text-center font-semibold ml-8 mr-10">
             Submits solutions{" "}
             <span className=" text-indigo-500">(c,d,e,f)</span> for equation:{" "}
             <span className="text-indigo-500">a*b = c*d + e + f</span>.
