@@ -85,9 +85,9 @@ export const multiSubmit = command({
 
     const demoAppInstance = loadDemoAppInstance(instance);
     const circuitId = BigInt(demoAppInstance.circuitId);
-    const demoApp = DemoApp__factory.connect(
-      demoAppInstance.demoApp
-    ).connect(wallet);
+    const demoApp = DemoApp__factory.connect(demoAppInstance.demoApp).connect(
+      wallet
+    );
 
     const maxConcurrency = 5;
     const semaphore = new Sema(maxConcurrency);
@@ -155,7 +155,7 @@ export const multiSubmit = command({
         cidProofPIs.push({
           circuitId: circuitId,
           proof: Proof.from_snarkjs(pd.proof),
-          inputs: pd.publicSignals,
+          inputs: pd.publicSignals.map(BigInt),
         });
       }
       assert(cidProofPIs.length === submissionSize);
@@ -212,8 +212,9 @@ export const multiSubmit = command({
           } else {
             const waitThenSubmitSolution = async () => {
               // Use `upaClient` to wait for this submission to be verified.
-              const waitTxReceipt =
-                await upaClient.waitForSubmissionVerified(submissionHandle);
+              const waitTxReceipt = await upaClient.waitForSubmissionVerified(
+                submissionHandle
+              );
 
               // Submit all of the solutions in the submission to demo-app
               for (let j = 0; j < submissionSize; ++j) {

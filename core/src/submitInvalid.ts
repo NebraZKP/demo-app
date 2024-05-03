@@ -77,12 +77,12 @@ export const submitInvalid = command({
 
       const proof = Proof.from_snarkjs(proofData.proof);
 
-      let publicInputs: string[] = proofData.publicSignals;
+      let publicInputs: bigint[] = proofData.publicSignals.map(BigInt);
 
       publicInputs = publicInputs.map((input) => {
         let inputBigInt = BigInt(input);
         inputBigInt += BigInt(1);
-        return inputBigInt.toString();
+        return inputBigInt;
       });
 
       const submitTxFn = async () => {

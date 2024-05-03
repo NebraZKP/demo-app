@@ -75,12 +75,8 @@ export type DemoAppInstance = {
   circuitId: string;
 };
 
-export function loadDemoAppInstance(
-  instance_file: string
-): DemoAppInstance {
-  return JSON.parse(
-    fs.readFileSync(instance_file, "ascii")
-  ) as DemoAppInstance;
+export function loadDemoAppInstance(instance_file: string): DemoAppInstance {
+  return JSON.parse(fs.readFileSync(instance_file, "ascii")) as DemoAppInstance;
 }
 
 export function demoAppFromInstance(instance_file: string): DemoApp {
