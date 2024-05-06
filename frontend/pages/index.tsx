@@ -28,7 +28,9 @@ export default function Home() {
         [0, 0],
         [0, 0],
       ],
-      [0, 0]
+      [0, 0],
+      [],
+      []
     ),
     inputs: [],
   });

@@ -47,9 +47,9 @@ export const submit = command({
 
     const demoAppInstance = loadDemoAppInstance(instance);
     const circuitId = BigInt(demoAppInstance.circuitId);
-    const demoApp = DemoApp__factory.connect(
-      demoAppInstance.demoApp
-    ).connect(wallet);
+    const demoApp = DemoApp__factory.connect(demoAppInstance.demoApp).connect(
+      wallet
+    );
 
     // Generate random public inputs along with a proof that they are valid.
     const proofData = await snarkjs.groth16.fullProve(
@@ -58,7 +58,7 @@ export const submit = command({
       circuitZkey
     );
     const proof = Proof.from_snarkjs(proofData.proof);
-    const publicInputs: string[] = proofData.publicSignals;
+    const publicInputs: bigint[] = proofData.publicSignals.map(BigInt);
 
     // Initialize a `UpaClient` for submitting proofs to the UPA.
     const upaClient = new UpaClient(wallet, loadInstance(upaInstance));
@@ -74,13 +74,13 @@ export const submit = command({
 
     // Wait for an off-chain prover to send an aggregated proof to the UPA
     // contract showing that our submitted `circuitIdProofAndInputs` was valid.
-    const submitProofTxReceipt =
-      await upaClient.waitForSubmissionVerified(submissionHandle);
+    const submitProofTxReceipt = await upaClient.waitForSubmissionVerified(
+      submissionHandle
+    );
 
     // Our submitted `circuitIdProofAndInputs` is now marked as valid in the
     // UPA contract so we can now submit the solution to demo-app's contract.
-    const submitSolutionTxResponse =
-      await demoApp.submitSolution(publicInputs);
+    const submitSolutionTxResponse = await demoApp.submitSolution(publicInputs);
 
     const submitSolutionTxReceipt = await submitSolutionTxResponse.wait();
 

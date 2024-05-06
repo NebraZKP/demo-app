@@ -44,7 +44,7 @@
     "snarkjs": "^0.7.3"
   },
   "dependencies": {
-    "@nebrazkp/upa": "1.0.0",
+    "@nebrazkp/upa": "1.1.0",
     "cmd-ts": "^0.13.0",
     "ethers": "^6.11.1",
     "snarkjs": "^0.7.3"

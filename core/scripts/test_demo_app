@@ -41,26 +41,28 @@ pushd _test_demo_app
     # Import hardhat util functions
     . ${UPA_CONTRACTS}/scripts/utils.sh
 
-    start_hardhat_node "" "yarn hardhat node"
+    start_hardhat_node 10546 "yarn hardhat node --port 10546"
+    export RPC_ENDPOINT="http://127.0.0.1:10546/"
     trap stop_hardhat_node EXIT
 
     # Run this script from the `demo-app` directory.
-    KEYFILE="a.key"
+    DEPLOYER_KEYFILE="deploy.key"
     APP_KEYFILE="demo-app.keyfile"
+    AGGREGATOR_KEYFILE="aggregator.key"
     SNARKJSVKFILE="../circuits/snarkjs_verification_key.json"
-    UPAVKFILE="../circuits/upa_verification_key.json"
+    APP_VKFILE="../circuits/upa_verification_key.json"
     UPAINSTANCE="upa.instance"
 
     export KEYFILE_PASSWORD=""
 
     # Set interval mining mode
-    upa dev interval-mining 1000
+    upa dev interval-mining 2000
 
     # Create and fund addresses
-    if ! [ -e ${KEYFILE} ] ; then
-        upa dev ethkeygen --keyfile ${KEYFILE}
+    if ! [ -e ${DEPLOYER_KEYFILE} ] ; then
+        upa dev ethkeygen --keyfile ${DEPLOYER_KEYFILE}
     fi
-    addr=0x`cat ${KEYFILE} | jq -r .address`
+    addr=0x`cat ${DEPLOYER_KEYFILE} | jq -r .address`
     upa dev fund --address ${addr}
 
     if ! [ -e ${APP_KEYFILE} ] ; then
@@ -69,16 +71,23 @@ pushd _test_demo_app
     addr=0x`cat ${APP_KEYFILE} | jq -r .address`
     upa dev fund --address ${addr}
 
-    # Deploy UPA and then demo-app using KEYFILE.
+    if ! [ -e ${AGGREGATOR_KEYFILE} ] ; then
+        upa dev ethkeygen --keyfile ${AGGREGATOR_KEYFILE}
+    fi
+    AGGREGATOR_ADDRESS=0x`cat ${AGGREGATOR_KEYFILE} | jq -r .address`
+    upa dev fund --address ${AGGREGATOR_ADDRESS}
+
+    # Deploy UPA using DEPLOYER_KEYFILE and then demo-app using APP_KEYFILE.
     upa deploy \
-           --keyfile ${KEYFILE} \
+           --keyfile ${DEPLOYER_KEYFILE} \
            --verifier ${UPA_CONTRACTS}/test/data/test.bin \
-           --instance ${UPAINSTANCE}
+           --instance ${UPAINSTANCE} \
+           --worker ${AGGREGATOR_ADDRESS}
 
     # Register a vk
     upa registervk \
-           --keyfile ${KEYFILE} \
-           --vk-file ${UPAVKFILE} \
+           --keyfile ${APP_KEYFILE} \
+           --vk-file ${APP_VKFILE} \
            --wait
 
     demo-app deploy \
@@ -88,7 +97,7 @@ pushd _test_demo_app
     # Launch Dev Aggregator
     BATCH_SIZE=6;
     MAX_WAIT_TIME=10;
-    start_dev_aggregator $BATCH_SIZE $MAX_WAIT_TIME $KEYFILE
+    start_dev_aggregator $BATCH_SIZE $MAX_WAIT_TIME $AGGREGATOR_KEYFILE
 
     rm -f generated_proofs.json
     demo-app generate-proofs -n 3
@@ -142,6 +151,9 @@ pushd _test_demo_app
         echo "FAILURE: expected next_id '${expected_next_id}' but saw '${next_id}'."
         exit 1
     fi
+
+    # Perform a verifier contract upgrade
+    upa upgrade --keyfile ${DEPLOYER_KEYFILE}
 
     # Check the demo-app state update. Should have incremented from 17 to 37.
     state=`demo-app get-state | jq -r .proofsVerified`

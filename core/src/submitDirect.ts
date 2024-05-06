@@ -84,7 +84,9 @@ export const submitDirect = command({
       const proof = new Proof(
         calldataJSON[0],
         calldataJSON[1],
-        calldataJSON[2]
+        calldataJSON[2],
+        [],
+        []
       );
       const publicSignals = calldataJSON[3];
 
