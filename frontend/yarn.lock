@@ -649,9 +649,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nebrazkp/upa@npm:1.1.0":
-  version: 1.1.0
-  resolution: "@nebrazkp/upa@npm:1.1.0"
+"@nebrazkp/upa@npm:1.1.1":
+  version: 1.1.1
+  resolution: "@nebrazkp/upa@npm:1.1.1"
   dependencies:
     "@ethersproject/keccak256": "npm:^5.7.0"
     "@nomicfoundation/hardhat-ethers": "npm:^3.0.0"
@@ -668,7 +668,7 @@ __metadata:
     winston: "npm:^3.10.0"
   bin:
     upa: dist/src/tool/main.js
-  checksum: 6ac776d01e4111dfa2d50cca47777f4e2794a7687f706be7e23b7364136c633e3ebbc61a25cd3576cf96c977204fdf428c27fc5c2695094c0641fdbc0db4171a
+  checksum: 8ff0ac3febab32996a752aaf66dabf1c3d7ef2da7dba7947d3cd84b868a2d88231c955ae2c97dc375878451735c6ce3084677c1e5fd069f668e7ab10f955d109
   languageName: node
   linkType: hard
 
@@ -2664,7 +2664,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "demo-app-frontend@workspace:."
   dependencies:
-    "@nebrazkp/upa": "npm:1.1.0"
+    "@nebrazkp/upa": "npm:1.1.1"
     "@types/node": "npm:^20"
     "@types/react": "npm:^18"
     "@types/react-dom": "npm:^18"
