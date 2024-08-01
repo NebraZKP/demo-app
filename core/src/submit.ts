@@ -2,15 +2,16 @@ import {
   generateRandomProofInputs,
   loadDemoAppInstance,
   upaInstance,
-  instance,
+  demoAppInstance,
   circuitWasm,
   circuitZkey,
 } from "./utils";
 import {
-  Proof,
+  Groth16Proof,
   snarkjs,
   UpaClient,
   CircuitIdProofAndInputs,
+  utils,
 } from "@nebrazkp/upa/sdk";
 import { options, config } from "@nebrazkp/upa/tool";
 const { keyfile, endpoint, password } = options;
@@ -25,7 +26,7 @@ export const submit = command({
     endpoint: endpoint(),
     keyfile: keyfile(),
     password: password(),
-    instance: instance(),
+    demoAppInstanceFile: demoAppInstance(),
     upaInstance: upaInstance(),
     circuitWasm: circuitWasm(),
     circuitZkey: circuitZkey(),
@@ -37,7 +38,7 @@ export const submit = command({
     endpoint,
     keyfile,
     password,
-    instance,
+    demoAppInstanceFile,
     upaInstance,
     circuitWasm,
     circuitZkey,
@@ -45,8 +46,8 @@ export const submit = command({
     const provider = new ethers.JsonRpcProvider(endpoint);
     const wallet = await loadWallet(keyfile, password, provider);
 
-    const demoAppInstance = loadDemoAppInstance(instance);
-    const circuitId = BigInt(demoAppInstance.circuitId);
+    const demoAppInstance = loadDemoAppInstance(demoAppInstanceFile);
+    const circuitId = demoAppInstance.circuitId;
     const demoApp = DemoApp__factory.connect(demoAppInstance.demoApp).connect(
       wallet
     );
@@ -57,11 +58,11 @@ export const submit = command({
       circuitWasm,
       circuitZkey
     );
-    const proof = Proof.from_snarkjs(proofData.proof);
+    const proof = Groth16Proof.from_snarkjs(proofData.proof);
     const publicInputs: bigint[] = proofData.publicSignals.map(BigInt);
 
     // Initialize a `UpaClient` for submitting proofs to the UPA.
-    const upaClient = new UpaClient(wallet, loadInstance(upaInstance));
+    const upaClient = await UpaClient.init(wallet, loadInstance(upaInstance));
 
     // Wrap `circuitId`, `proof`, and `publicInputs` in a type
     const circuitIdProofAndInputs: CircuitIdProofAndInputs[] = [
@@ -78,17 +79,47 @@ export const submit = command({
       submissionHandle
     );
 
+    const submitProofWeiUsed =
+      submitProofTxReceipt!.fee + submissionHandle.txResponse.value;
+    const submitProofEtherUsed = utils.weiToEther(
+      submitProofWeiUsed,
+      6 /*numDecimalPlaces*/
+    );
+
     // Our submitted `circuitIdProofAndInputs` is now marked as valid in the
     // UPA contract so we can now submit the solution to demo-app's contract.
     const submitSolutionTxResponse = await demoApp.submitSolution(publicInputs);
 
     const submitSolutionTxReceipt = await submitSolutionTxResponse.wait();
 
+    const submitSolutionWeiUsed = submitSolutionTxReceipt!.fee;
+    const submitSolutionEtherUsed = utils.weiToEther(
+      submitSolutionWeiUsed,
+      6 /*numDecimalPlaces*/
+    );
+
+    const totalGasUsed =
+      submitProofTxReceipt!.gasUsed + submitSolutionTxReceipt!.gasUsed;
+
+    // Convert wei to eth again so that end result is rounded correctly.
+    const totalEthUsed = utils.weiToEther(
+      submitProofWeiUsed + submitSolutionWeiUsed,
+      6 /*numDecimalPlaces*/
+    );
+
     console.log("Gas Cost Summary:");
     console.table({
-      "Submit proof to UPA": { "Gas Cost": `${submitProofTxReceipt!.gasUsed}` },
+      "Submit proof to UPA": {
+        "Cost (gas)": `${submitProofTxReceipt!.gasUsed}`,
+        "Cost (ETH, includes UPA fee)": `${submitProofEtherUsed}`,
+      },
       "Submit solution to app contract": {
-        "Gas Cost": `${submitSolutionTxReceipt?.gasUsed}`,
+        "Cost (gas)": `${submitSolutionTxReceipt!.gasUsed}`,
+        "Cost (ETH, includes UPA fee)": `${submitSolutionEtherUsed}`,
+      },
+      Total: {
+        "Cost (gas)": `${totalGasUsed}`,
+        "Cost (ETH, includes UPA fee)": `${totalEthUsed}`,
       },
     });
   },

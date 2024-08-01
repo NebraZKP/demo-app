@@ -7,6 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "clean": "hardhat clean",
+    "setup": "./scripts/setup",
     "build": "hardhat compile --show-stack-traces && tsc",
     "format": "prettier . --write",
     "lint": "eslint --ext .ts . && prettier --check 'contracts/**/*.sol' && solhint 'contracts/*.sol'",
@@ -44,9 +45,14 @@
     "snarkjs": "^0.7.3"
   },
   "dependencies": {
-    "@nebrazkp/upa": "1.1.1",
+    "@nebrazkp/upa": "1.2.1",
     "cmd-ts": "^0.13.0",
     "ethers": "^6.11.1",
     "snarkjs": "^0.7.3"
+  },
+  "resolutions": {
+    "@openzeppelin/defender-sdk-base-client": "1.13.1",
+    "@openzeppelin/defender-sdk-deploy-client": "1.13.1",
+    "@openzeppelin/defender-sdk-network-client": "1.13.1"
   }
 }

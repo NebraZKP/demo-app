@@ -7,21 +7,21 @@ import {
   submittingToDemoApp,
 } from "@/src/submit";
 import { DemoAppStages } from "../lib/types";
-import { SubmissionHandle, application } from "@nebrazkp/upa/sdk";
+import { SubmissionHandle, application, utils } from "@nebrazkp/upa/sdk";
 import Logo from "../components/ui/Logo";
 import * as ethers from "ethers";
 import StageText from "../components/ui/StageText";
 const roboto = Roboto_Mono({ subsets: ["latin"] });
 
 type CircuitIdProofAndInputs = application.CircuitIdProofAndInputs;
-const Proof = application.Proof;
+const Proof = application.Groth16Proof;
 
 export default function Home() {
   const [currStage, setCurrStage] = useState<DemoAppStages>(
     DemoAppStages.NotSubmitted
   );
   const [proofData, setProofData] = useState<CircuitIdProofAndInputs>({
-    circuitId: BigInt(0),
+    circuitId: utils.bigintToHex32(BigInt(0)),
     proof: new Proof(
       [0, 0],
       [

@@ -2,9 +2,10 @@ import * as ethers from "ethers";
 import { command } from "cmd-ts";
 import * as fs from "fs";
 import assert from "assert";
-import { instance, upaInstance, DemoAppInstance, vkFile } from "./utils";
+import { demoAppInstance, upaInstance, DemoAppInstance, vkFile } from "./utils";
 import { DemoApp__factory } from "../typechain-types";
 import { options, config } from "@nebrazkp/upa/tool";
+import { utils } from "@nebrazkp/upa/sdk";
 const { keyfile, endpoint, password } = options;
 const { loadWallet, upaFromInstanceFile } = config;
 
@@ -14,7 +15,9 @@ export const deploy = command({
     endpoint: endpoint(),
     keyfile: keyfile(),
     password: password(),
-    instance: instance("Output file for instance information"),
+    demoAppInstanceFile: demoAppInstance(
+      "Output file for instance information"
+    ),
     upaInstance: upaInstance(),
     vkFile: vkFile(),
   },
@@ -23,16 +26,16 @@ export const deploy = command({
     endpoint,
     keyfile,
     password,
-    instance,
+    demoAppInstanceFile,
     upaInstance,
     vkFile,
   }): Promise<void> {
     const provider = new ethers.JsonRpcProvider(endpoint);
     const wallet = await loadWallet(keyfile, password, provider);
 
-    const upa = upaFromInstanceFile(upaInstance, provider);
+    const upa = await upaFromInstanceFile(upaInstance, provider);
     const vk = config.loadAppVK(vkFile);
-    const circuitId = await upa.proofReceiver.computeCircuitId(vk);
+    const circuitId = utils.computeCircuitId(vk);
 
     const DemoApp = new DemoApp__factory(wallet);
     const demoApp = await DemoApp.deploy(upa.verifier, circuitId);
@@ -45,7 +48,7 @@ export const deploy = command({
       demoApp: await demoApp.getAddress(),
       circuitId: circuitId.toString(),
     };
-    fs.writeFileSync(instance, JSON.stringify(instanceData));
+    fs.writeFileSync(demoAppInstanceFile, JSON.stringify(instanceData));
 
     console.log(`DemoApp was deployed to address \
     ${instanceData.demoApp}, circuitId is \

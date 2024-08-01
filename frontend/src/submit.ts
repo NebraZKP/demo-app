@@ -3,7 +3,7 @@ const snarkjs = require("snarkjs");
 import {
   application,
   UpaClient,
-  Proof,
+  Groth16Proof,
   utils,
   SubmissionHandle,
   submission,
@@ -46,7 +46,7 @@ export function generateRandomProofInputs(): {
 
 // Generating demo-app solution and proof…
 export async function generateSolutionAndProof(): Promise<application.CircuitIdProofAndInputs> {
-  const circuitId = BigInt(demoAppInstanceDescriptor.circuitId);
+  const circuitId = demoAppInstanceDescriptor.circuitId;
 
   const proofData = await snarkjs.groth16.fullProve(
     generateRandomProofInputs(),
@@ -54,7 +54,7 @@ export async function generateSolutionAndProof(): Promise<application.CircuitIdP
     "/circuit.zkey",
   );
 
-  const proof = Proof.from_snarkjs(proofData.proof);
+  const proof = Groth16Proof.from_snarkjs(proofData.proof);
   const publicInputs = proofData.publicSignals.map((x: string) => BigInt(x));
 
   console.log(`proof: ${proof}`);
@@ -74,7 +74,7 @@ export async function submitProofToUpa(
   await changeNetwork();
   await provider.send("eth_requestAccounts", []); // Prompt user to connect their wallet
   const signer = await provider.getSigner();
-  const upaClient = new UpaClient(signer, upaInstanceDescriptor);
+  const upaClient = await UpaClient.init(signer, upaInstanceDescriptor);
 
   // TODO: Web version of UpaClient
   const submissionHandle = await upaClient.submitProofs([
@@ -108,7 +108,7 @@ export async function aggregatingProofOnUpa(
   await changeNetwork();
   const signer = await provider.getSigner();
 
-  const upaClient = new UpaClient(signer, upaInstanceDescriptor);
+  const upaClient = await UpaClient.init(signer, upaInstanceDescriptor);
 
   const proofId = await utils.computeProofId(
     proofData.circuitId,

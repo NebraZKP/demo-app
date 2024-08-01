@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: UNLICENSED
 
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.26;
 
 import "./CircuitVerifier.sol";
 import "@nebrazkp/upa/contracts/IUpaVerifier.sol";
@@ -12,12 +12,12 @@ contract DemoApp is Groth16Verifier {
 
     uint256 public proofsVerified = 0;
 
-    uint256 public circuitId;
+    bytes32 public circuitId;
 
     // Stores keccak of submitted solutions to prevent duplicates.
     mapping(bytes32 => bool) private solutions;
 
-    constructor(IUpaVerifier _upaVerifier, uint256 _circuitId) {
+    constructor(IUpaVerifier _upaVerifier, bytes32 _circuitId) {
         upaVerifier = _upaVerifier;
         circuitId = _circuitId;
     }
@@ -66,7 +66,7 @@ contract DemoApp is Groth16Verifier {
     function submitSolution(
         uint256[] calldata solution
     ) public returns (bool r) {
-        bool isProofVerified = upaVerifier.isVerified(circuitId, solution);
+        bool isProofVerified = upaVerifier.isProofVerified(circuitId, solution);
 
         require(isProofVerified, "Solution not verified by UPA");
 
@@ -97,7 +97,7 @@ contract DemoApp is Groth16Verifier {
         uint256[] calldata solution,
         ProofReference calldata proofReference
     ) public returns (bool r) {
-        bool isProofVerified = upaVerifier.isVerified(
+        bool isProofVerified = upaVerifier.isProofVerified(
             circuitId,
             solution,
             proofReference
