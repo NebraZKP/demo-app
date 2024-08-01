@@ -3,12 +3,11 @@ import { DemoApp, DemoApp__factory } from "../typechain-types";
 import * as fs from "fs";
 import * as path from "path";
 import { string, option } from "cmd-ts";
-import { application, snarkjs } from "@nebrazkp/upa/sdk";
-const { Proof } = application;
+import { snarkjs, Groth16Proof } from "@nebrazkp/upa/sdk";
 
 export type Option = ReturnType<typeof option>;
 
-export function instance(description?: string | undefined): Option {
+export function demoAppInstance(description?: string | undefined): Option {
   return option({
     type: string,
     long: "instance",
@@ -121,14 +120,14 @@ function findCircuitFile(filename: string): string {
 export async function generateProof(
   circuitWasm: string,
   circuitZkey: string
-): Promise<[application.Proof, string[]]> {
+): Promise<[Groth16Proof, string[]]> {
   const proofData = await snarkjs.groth16.fullProve(
     generateRandomProofInputs(),
     circuitWasm,
     circuitZkey
   );
 
-  const proof = Proof.from_snarkjs(proofData.proof);
+  const proof = Groth16Proof.from_snarkjs(proofData.proof);
   const publicInputs: string[] = proofData.publicSignals;
 
   return [proof, publicInputs];

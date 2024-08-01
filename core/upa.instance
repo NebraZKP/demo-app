@@ -1,7 +1,6 @@
 {
-  "verifier": "0x8bdEa1842afb8Be3b46d8fE8D6d110eDE057d7c7",
-  "proofReceiver": "0x310dF68C54aCA8e9446aBAAacd4e3ACda39c706A",
-  "aggregatedProofVerifier": "0xbDC109650bA69b37DA1856552D3b873202f08579",
-  "feeModel": "0x17E358c9efD3a47f1700B3Ab60429302F2a9e807",
-  "deploymentBlockNumber": 5829030
+  "verifier":"0x3B946743DEB7B6C97F05B7a31B23562448047E3E",
+  "deploymentBlockNumber":6405136,
+  "deploymentTx":"0xa8626318b76b71cd21cdfb93ef67c9571d94e01383e852a3eb6dc5dc6188808e",
+  "chainId":"11155111"
 }

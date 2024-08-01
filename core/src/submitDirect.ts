@@ -4,11 +4,11 @@ import { command, option, number } from "cmd-ts";
 const snarkjs = require("snarkjs");
 import { generateRandomProofInputs } from "./utils";
 import { Sema, RateLimit } from "async-sema";
-import { Proof, utils } from "@nebrazkp/upa/sdk";
+import { Groth16Proof, utils } from "@nebrazkp/upa/sdk";
 import { options, config } from "@nebrazkp/upa/tool";
 import {
   demoAppFromInstance,
-  instance,
+  demoAppInstance,
   circuitWasm,
   circuitZkey,
 } from "./utils";
@@ -21,7 +21,7 @@ export const submitDirect = command({
     endpoint: endpoint(),
     keyfile: keyfile(),
     password: password(),
-    instance: instance(),
+    demoAppInstanceFile: demoAppInstance(),
     numProofs: option({
       type: number,
       long: "num",
@@ -43,13 +43,13 @@ export const submitDirect = command({
     endpoint,
     keyfile,
     password,
-    instance,
+    demoAppInstanceFile,
     numProofs,
     circuitWasm,
     circuitZkey,
     submitRate,
   }): Promise<undefined> {
-    let demoApp = demoAppFromInstance(instance);
+    let demoApp = demoAppFromInstance(demoAppInstanceFile);
     const provider = new ethers.JsonRpcProvider(endpoint);
     const wallet = await loadWallet(keyfile, password, provider);
     demoApp = demoApp.connect(wallet);
@@ -81,7 +81,7 @@ export const submitDirect = command({
 
       const calldataJSON = JSON.parse("[" + calldataBlob + "]");
 
-      const proof = new Proof(
+      const proof = new Groth16Proof(
         calldataJSON[0],
         calldataJSON[1],
         calldataJSON[2],
@@ -138,9 +138,18 @@ export const submitDirect = command({
       (total, receipt) => total + receipt!.gasUsed,
       0n
     );
+
+    const totalWeiUsed = txReceipts.reduce(
+      (total, receipt) => total + receipt!.fee,
+      0n
+    );
+
+    const totalEthUsed = utils.weiToEther(totalWeiUsed, 6 /*numDecimalPlaces*/);
+
     console.table({
       "Gas used for submitting proofs and solutions to demo-app": {
-        "Gas Cost": `${totalGasUsed}`,
+        "Cost (gas)": `${totalGasUsed}`,
+        "Cost (ETH)": `${totalEthUsed}`,
       },
     });
   },

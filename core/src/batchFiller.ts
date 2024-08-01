@@ -1,7 +1,7 @@
 import { application, upa, typechain } from "@nebrazkp/upa/sdk";
 import { options, config } from "@nebrazkp/upa/tool";
 import {
-  instance,
+  demoAppInstance,
   circuitWasm,
   circuitZkey,
   generateProof,
@@ -10,8 +10,13 @@ import {
   sleep,
 } from "./utils";
 import * as ethers from "ethers";
-import { command, option, number, boolean, flag } from "cmd-ts";
+import { optional, command, option, number, boolean, flag } from "cmd-ts";
 import { PayableOverrides } from "../typechain-types/common";
+
+// TODO, read this from upa_config.json or accept as a parameter
+
+/// UPA Aggregated Batch Size
+const DEFAULT_AGGREGATED_BATCH_SIZE: number = 32;
 
 export const batchFiller = command({
   name: "batch-filler",
@@ -20,7 +25,7 @@ export const batchFiller = command({
     keyfile: options.keyfile(),
     password: options.password(),
     maxFeePerGasGwei: options.maxFeePerGasGwei(),
-    instance: instance(),
+    instance: demoAppInstance(),
     upaInstance: upaInstance(),
     circuitWasm: circuitWasm(),
     circuitZkey: circuitZkey(),
@@ -49,6 +54,17 @@ export const batchFiller = command({
       defaultValue: () => 1,
       description: "The number of batches to be filled.",
     }),
+    aggregatedBatchSize: option({
+      type: number,
+      long: "aggregated-batch-size",
+      defaultValue: () => DEFAULT_AGGREGATED_BATCH_SIZE,
+      description: `The size of an outer batch ({DEFAULT_OUTER_BATCH_SIZE})`,
+    }),
+    maxSubmissionSize: option({
+      type: optional(number),
+      long: "max-submission-size",
+      description: "The maximum submission size (read from contract)",
+    }),
   },
   description: "Send a number of demo-app proofs to UPA to be verified.",
   handler: async function ({
@@ -64,6 +80,8 @@ export const batchFiller = command({
     maxFalseProofCounter,
     onlyOnce,
     numBatchesToBeFilled,
+    aggregatedBatchSize,
+    maxSubmissionSize,
   }): Promise<void> {
     const maxFeePerGas = maxFeePerGasGwei
       ? ethers.parseUnits(maxFeePerGasGwei, "gwei")
@@ -75,14 +93,10 @@ export const batchFiller = command({
     const demoAppInstance = loadDemoAppInstance(instance);
     const circuitId = demoAppInstance.circuitId;
 
-    const { verifier, proofReceiver } = config.upaFromInstanceFile(
-      upaInstance,
-      wallet
-    );
+    const { verifier } = await config.upaFromInstanceFile(upaInstance, wallet);
 
     await fillBatch(
       verifier,
-      proofReceiver,
       circuitId,
       circuitWasm,
       circuitZkey,
@@ -90,13 +104,13 @@ export const batchFiller = command({
       maxFalseProofCounter,
       onlyOnce,
       numBatchesToBeFilled,
+      aggregatedBatchSize,
+      maxSubmissionSize,
       maxFeePerGas
     );
   },
 });
 
-/// UPA Aggregated Batch Size
-const BATCH_SIZE: number = 40;
 /// Default time between iterations
 const DEFAULT_TIME_BETWEEN_ITERATIONS: number = 30;
 /// Max false proof counter. If the false proof counter
@@ -111,7 +125,7 @@ enum RejectionReason {
 
 /// Proofs and Public inputs type
 type ProofsAndPublicInputs = {
-  proof: application.Proof;
+  proof: application.Groth16Proof;
   publicInputs: string[];
 }[];
 
@@ -122,6 +136,7 @@ async function tryGenerateProofsForLastBatch(
   lastVerifiedProofIdx: bigint,
   circuitWasm: string,
   circuitZkey: string,
+  outerBatchSize: number,
   numBatchesToBeFilled: number,
   state: { areThereFalseProofs: boolean; falseProofCounter: number }
 ): Promise<ProofsAndPublicInputs> {
@@ -129,8 +144,8 @@ async function tryGenerateProofsForLastBatch(
   console.log(`${numProofsPending} pending proofs`);
   const proofsAndPublicInputs = [];
   if (
-    numProofsPending >= BATCH_SIZE * numBatchesToBeFilled ||
-    (numProofsPending % BigInt(BATCH_SIZE) == 0n && numProofsPending !== 0n)
+    numProofsPending >= outerBatchSize * numBatchesToBeFilled ||
+    (numProofsPending % BigInt(outerBatchSize) == 0n && numProofsPending !== 0n)
   ) {
     // If we hit this branch, under normal conditions
     // we don't need to fill the last batch, as more proofs
@@ -142,7 +157,7 @@ async function tryGenerateProofsForLastBatch(
     if (state.areThereFalseProofs) {
       console.log("Invalid proofs detected with high likelihood.");
       console.log("Submitting a full batch to flush");
-      for (let i = 0; i < BATCH_SIZE; i++) {
+      for (let i = 0; i < outerBatchSize; i++) {
         const [proof, publicInputs] = await generateProof(
           circuitWasm,
           circuitZkey
@@ -160,7 +175,7 @@ async function tryGenerateProofsForLastBatch(
     return Promise.reject(RejectionReason.NoProofsPending);
   } else {
     const numProofs =
-      BigInt(BATCH_SIZE) - (numProofsPending % BigInt(BATCH_SIZE));
+      BigInt(outerBatchSize) - (numProofsPending % BigInt(outerBatchSize));
     console.log(`Generating ${numProofs} proofs`);
     for (let i = 0; i < numProofs; i++) {
       const [proof, publicInputs] = await generateProof(
@@ -180,6 +195,7 @@ async function generateProofsForLastBatch(
   lastVerifiedProofIdx: bigint,
   circuitWasm: string,
   circuitZkey: string,
+  outerBatchSize: number,
   numBatchesToBeFilled: number,
   maxFalseProofCounter: number,
   state: { areThereFalseProofs: boolean; falseProofCounter: number }
@@ -191,6 +207,7 @@ async function generateProofsForLastBatch(
       lastVerifiedProofIdx,
       circuitWasm,
       circuitZkey,
+      outerBatchSize,
       numBatchesToBeFilled,
       state
     );
@@ -294,30 +311,32 @@ async function submitGeneratedProofs(
   proofReceiver: typechain.UpaProofReceiver,
   circuitId: string,
   proofsAndPublicInputs: ProofsAndPublicInputs,
-  options: PayableOverrides
+  options: PayableOverrides,
+  maxSubmissionSize: number | undefined
 ): Promise<void> {
-  const maxNumProofsPerSubmission = Number(
-    await proofReceiver.MAX_NUM_PROOFS_PER_SUBMISSION()
-  );
+  if (maxSubmissionSize === undefined) {
+    maxSubmissionSize = Number(
+      await proofReceiver.MAX_NUM_PROOFS_PER_SUBMISSION()
+    );
+  }
+
   const numProofsToSubmit = proofsAndPublicInputs.length;
   console.log(`Submitting ${numProofsToSubmit} proofs`);
-  const numFullChunks = Math.floor(
-    numProofsToSubmit / maxNumProofsPerSubmission
-  );
+  const numFullChunks = Math.floor(numProofsToSubmit / maxSubmissionSize);
   await submitFullChunks(
     proofReceiver,
     numFullChunks,
-    maxNumProofsPerSubmission,
+    maxSubmissionSize,
     circuitId,
     proofsAndPublicInputs,
     options
   );
-  const numProofsInLastChunk = numProofsToSubmit % maxNumProofsPerSubmission;
+  const numProofsInLastChunk = numProofsToSubmit % maxSubmissionSize;
   await submitRemainder(
     proofReceiver,
     numProofsInLastChunk,
     circuitId,
-    proofsAndPublicInputs.slice(numFullChunks * maxNumProofsPerSubmission),
+    proofsAndPublicInputs.slice(numFullChunks * maxSubmissionSize),
     options
   );
   console.log(`Successfully submitted ${numProofsToSubmit} proofs`);
@@ -328,7 +347,6 @@ async function submitGeneratedProofs(
 /// `timeBetweenIterations`.
 export async function fillBatch(
   upaVerifier: typechain.UpaVerifier,
-  proofReceiver: typechain.UpaProofReceiver,
   circuitId: string,
   circuitWasm: string,
   circuitZkey: string,
@@ -336,6 +354,8 @@ export async function fillBatch(
   maxFalseProofCounter: number,
   onlyOnce: boolean,
   numBatchesToBeFilled: number,
+  outerBatchSize: number,
+  maxSubmissionSize?: number,
   maxFeePerGas?: bigint
 ) {
   const options: PayableOverrides = { maxFeePerGas };
@@ -344,13 +364,14 @@ export async function fillBatch(
     areThereFalseProofs: false,
     falseProofCounter: 0,
   };
+
   for (;;) {
     console.log("Scanning the blockchain for pending proofs");
-    const newLastVerifiedProofIdx = await upa.lastVerifiedProofIdx(
+    const newLastVerifiedProofIdx = await upa.lastAggregatedProofIdx(
       upaVerifier,
-      proofReceiver
+      upaVerifier
     );
-    const lastSubmittedProofIdx = (await proofReceiver._nextProofIdx()) - 1n;
+    const lastSubmittedProofIdx = (await upaVerifier.nextProofIdx()) - 1n;
     if (newLastVerifiedProofIdx !== lastVerifiedProofIdx) {
       state.falseProofCounter = 0;
       state.areThereFalseProofs = false;
@@ -361,16 +382,18 @@ export async function fillBatch(
       lastVerifiedProofIdx,
       circuitWasm,
       circuitZkey,
+      outerBatchSize,
       numBatchesToBeFilled,
       maxFalseProofCounter,
       state
     );
     if (proofsAndPublicInputs) {
       await submitGeneratedProofs(
-        proofReceiver,
+        upaVerifier,
         circuitId,
         proofsAndPublicInputs,
-        options
+        options,
+        maxSubmissionSize
       );
     }
     if (onlyOnce) {

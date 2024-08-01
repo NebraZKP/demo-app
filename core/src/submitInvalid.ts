@@ -3,8 +3,8 @@ import { ContractTransactionReceipt } from "ethers";
 import { command, option, number } from "cmd-ts";
 const snarkjs = require("snarkjs");
 import { generateRandomProofInputs, upaInstance } from "./utils";
-import { instance, loadDemoAppInstance } from "./utils";
-import { Proof, application, utils, UpaClient } from "@nebrazkp/upa/sdk";
+import { demoAppInstance, loadDemoAppInstance } from "./utils";
+import { Groth16Proof, application, utils, UpaClient } from "@nebrazkp/upa/sdk";
 import { options, config } from "@nebrazkp/upa/tool";
 const { keyfile, endpoint, password } = options;
 const { loadWallet, loadInstance } = config;
@@ -17,7 +17,7 @@ export const submitInvalid = command({
     endpoint: endpoint(),
     keyfile: keyfile(),
     password: password(),
-    instance: instance(),
+    demoAppInstanceFile: demoAppInstance(),
     upaInstance: upaInstance(),
     numProofs: option({
       type: number,
@@ -41,7 +41,7 @@ export const submitInvalid = command({
     endpoint,
     keyfile,
     password,
-    instance,
+    demoAppInstanceFile,
     upaInstance,
     numProofs,
     circuitWasm,
@@ -50,10 +50,10 @@ export const submitInvalid = command({
   }): Promise<void> {
     const provider = new ethers.JsonRpcProvider(endpoint);
     const wallet = await loadWallet(keyfile, password, provider);
-    const upaClient = new UpaClient(wallet, loadInstance(upaInstance));
+    const upaClient = await UpaClient.init(wallet, loadInstance(upaInstance));
 
-    const demoAppInstance = loadDemoAppInstance(instance);
-    const circuitId = BigInt(demoAppInstance.circuitId);
+    const demoAppInstance = loadDemoAppInstance(demoAppInstanceFile);
+    const circuitId = demoAppInstance.circuitId;
 
     const maxConcurrency = 5;
     const sema = new Sema(maxConcurrency);
@@ -75,7 +75,7 @@ export const submitInvalid = command({
         circuitZkey
       );
 
-      const proof = Proof.from_snarkjs(proofData.proof);
+      const proof = Groth16Proof.from_snarkjs(proofData.proof);
 
       let publicInputs: bigint[] = proofData.publicSignals.map(BigInt);
 

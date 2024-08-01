@@ -5,7 +5,7 @@ demo_app_root_dir=`realpath ${this_dir}/..`
 if [ -e ${demo_app_root_dir}/node_modules/@nebrazkp ] ; then
     . ${demo_app_root_dir}/node_modules/@nebrazkp/upa/scripts/shell_setup.sh
 else
-    . ${demo_app_root_dir}/../../upa/scripts/shell_setup.sh
+    . ${demo_app_root_dir}/../../../upa/scripts/shell_setup.sh
 fi
 
 export PATH=$PATH:${demo_app_root_dir}/node_modules/.bin

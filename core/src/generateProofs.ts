@@ -4,6 +4,8 @@ import {
   circuitZkey,
   proofOutputFile,
   generateProof,
+  demoAppInstance,
+  loadDemoAppInstance,
 } from "./utils";
 import * as fs from "fs";
 
@@ -17,6 +19,7 @@ export const generateProofs = command({
       defaultValue: () => 1,
       description: "The number of proofs to generate.",
     }),
+    demoAppInstanceFile: demoAppInstance(),
     circuitWasm: circuitWasm(),
     circuitZkey: circuitZkey(),
     proofOutputFile: proofOutputFile(),
@@ -24,20 +27,21 @@ export const generateProofs = command({
   description: "Generate a number of demo-app proofs and write them to file.",
   handler: async function ({
     numProofs,
+    demoAppInstanceFile,
     circuitWasm,
     circuitZkey,
     proofOutputFile,
   }): Promise<undefined> {
     const startTimeMilliseconds = Date.now();
 
-    const proofsAndPublicInputs = [];
+    const demoAppInstance = loadDemoAppInstance(demoAppInstanceFile);
+    const circuitId = demoAppInstance.circuitId;
+
+    const cidProofsPIs = [];
 
     for (let i = 0; i < numProofs; i++) {
-      const [proof, publicInputs] = await generateProof(
-        circuitWasm,
-        circuitZkey
-      );
-      proofsAndPublicInputs.push({ proof, inputs: publicInputs });
+      const [proof, inputs] = await generateProof(circuitWasm, circuitZkey);
+      cidProofsPIs.push({ circuitId, proof, inputs });
 
       console.log(`Generated proof ${i}.`);
     }
@@ -50,10 +54,7 @@ export const generateProofs = command({
       `Generated ${numProofs} proofs in ${elapsedTimeSeconds} seconds.`
     );
 
-    fs.writeFileSync(
-      proofOutputFile,
-      JSON.stringify(proofsAndPublicInputs, null, 2)
-    );
+    fs.writeFileSync(proofOutputFile, JSON.stringify(cidProofsPIs, null, 2));
 
     console.log(`Generated proofs written to file ${proofOutputFile}.`);
   },

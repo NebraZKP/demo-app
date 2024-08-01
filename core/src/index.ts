@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { subcommands, run } from "cmd-ts";
-import { batchFiller } from "./batch_filler";
+import { batchFiller } from "./batchFiller";
 import { deploy } from "./deploy";
 import { submitDirect } from "./submitDirect";
 import { getstate } from "./getstate";
@@ -9,6 +9,8 @@ import { multiSubmit } from "./multiSubmit";
 import { submit } from "./submit";
 import { submitInvalid } from "./submitInvalid";
 import { generateProofs } from "./generateProofs";
+import { submitProofsFromFile } from "./submitProofsFromFile";
+import { submitSolutionsFromFile } from "./submitSolutionsFromFile";
 
 const root = subcommands({
   name: "demo-app",
@@ -16,6 +18,8 @@ const root = subcommands({
     deploy,
     submit: submit,
     "generate-proofs": generateProofs,
+    "submit-proofs-from-file": submitProofsFromFile,
+    "submit-solutions-from-file": submitSolutionsFromFile,
     "submit-invalid": submitInvalid,
     "multi-submit": multiSubmit,
     "submit-direct": submitDirect,
