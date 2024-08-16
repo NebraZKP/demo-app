@@ -10,7 +10,7 @@
     "format": "prettier . --write"
   },
   "dependencies": {
-    "@nebrazkp/upa": "1.2.1",
+    "@nebrazkp/upa": "../upa/package.tgz",
     "next": "14.1.0",
     "react": "^18",
     "react-dom": "^18"

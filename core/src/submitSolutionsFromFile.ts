@@ -1,5 +1,5 @@
 import { loadDemoAppInstance, demoAppInstance } from "./utils";
-import { Submission } from "@nebrazkp/upa/sdk";
+import { OffChainSubmission } from "@nebrazkp/upa/sdk";
 import * as ethers from "ethers";
 import { command, option, number, string } from "cmd-ts";
 import { options, config } from "@nebrazkp/upa/tool";
@@ -99,14 +99,14 @@ export const submitSolutionsFromFile = command({
  * @returns A promise that resolves to the transaction response.
  */
 export async function submitSolution(
-  wallet: ethers.ethers.BaseWallet,
+  _wallet: ethers.AbstractSigner,
   demoApp: DemoApp,
   nonce: number,
-  submission: Submission,
+  submission: OffChainSubmission,
   solutionIdx: number
 ): Promise<ethers.ContractTransactionResponse> {
   const solution = submission.inputs[solutionIdx];
-  console.log(`$solution ${solution}`);
+  console.log(`Submitted solution ${solution}`);
   if (submission.isMultiProofSubmission()) {
     // If the proof was part of a multi-proof submission, we
     // need to pass a proof reference to the demo-app

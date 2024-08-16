@@ -4,7 +4,7 @@
   "description": "A demo app that sends proofs to be verified on-chain using either a circom-generated verifier or UPA.",
   "bin": "dist/src/index.js",
   "author": "",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "scripts": {
     "clean": "hardhat clean",
     "setup": "./scripts/setup",
@@ -45,7 +45,7 @@
     "snarkjs": "^0.7.3"
   },
   "dependencies": {
-    "@nebrazkp/upa": "1.2.1",
+    "@nebrazkp/upa": "../upa/package.tgz",
     "cmd-ts": "^0.13.0",
     "ethers": "^6.11.1",
     "snarkjs": "^0.7.3"
